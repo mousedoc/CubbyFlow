@@ -25,9 +25,10 @@
 #include <direct.h>
 #else
 #include <sys/stat.h>
+#include <direct.h>
 #endif
 
-#include <getopt.h>
+#include <../../../../Libraries/winix/getopt.h>
 
 #include <fstream>
 #include <string>
@@ -39,6 +40,7 @@
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
+using namespace CubbyFlow;
 
 const int gNumFrameResources = 3;
 
@@ -89,52 +91,6 @@ void NormalMapApp::CubbyFlow_Initialize()
 	std::string logFileName = APP_NAME ".log";
 	std::string outputDir = APP_NAME "_output";
 
-	// Parse options
-	static struct option longOptions[] =
-	{
-		{ "resx",      optional_argument, nullptr, 'r' },
-		{ "frames",    optional_argument, nullptr, 'f' },
-		{ "fps",       optional_argument, nullptr, 'p' },
-		{ "example",   optional_argument, nullptr, 'e' },
-		{ "log",       optional_argument, nullptr, 'l' },
-		{ "outputDir", optional_argument, nullptr, 'o' },
-		{ "help",      optional_argument, nullptr, 'h' },
-		{ nullptr,     0,                 nullptr,  0 }
-	};
-
-	int opt;
-	int long_index = 0;
-	while ((opt = getopt_long(argc, argv, "r:f:p:e:l:o:h", longOptions, &long_index)) != -1)
-	{
-		switch (opt)
-		{
-		case 'r':
-			resX = static_cast<size_t>(atoi(optarg));
-			break;
-		case 'f':
-			numberOfFrames = static_cast<size_t>(atoi(optarg));
-			break;
-		case 'p':
-			fps = atof(optarg);
-			break;
-		case 'e':
-			exampleNum = atoi(optarg);
-			break;
-		case 'l':
-			logFileName = optarg;
-			break;
-		case 'o':
-			outputDir = optarg;
-			break;
-		case 'h':
-			printUsage();
-			exit(EXIT_SUCCESS);
-		default:
-			printUsage();
-			exit(EXIT_FAILURE);
-		}
-	}
-
 #ifdef CUBBYFLOW_WINDOWS
 	_mkdir(outputDir.c_str());
 #else
@@ -147,28 +103,53 @@ void NormalMapApp::CubbyFlow_Initialize()
 		Logging::SetAllStream(&logFile);
 	}
 
-	switch (exampleNum)
-	{
-	case 1:
-		RunExample1(outputDir, resX, numberOfFrames, fps);
-		break;
-	case 2:
-		RunExample2(outputDir, resX, numberOfFrames, fps);
-		break;
-	case 3:
-		RunExample3(outputDir, resX, numberOfFrames, fps);
-		break;
-	case 4:
-		RunExample4(outputDir, resX, numberOfFrames, fps);
-		break;
-	default:
-		printUsage();
-		exit(EXIT_FAILURE);
-	}
-
-	return EXIT_SUCCESS;
+	RunExample1(outputDir, resX, numberOfFrames, fps);
 }
 
+void RunExample1(
+	const std::string& rootDir,
+	size_t resX,
+	unsigned int numberOfFrames,
+	double fps)
+{
+	// Build solver
+	auto solver = LevelSetLiquidSolver3::Builder()
+		.WithResolution({ resX, 2 * resX, resX })
+		.WithDomainSizeX(1.0)
+		.MakeShared();
+
+	auto grids = solver->GetGridSystemData();
+	BoundingBox3D domain = grids->GetBoundingBox();
+
+	// Build emitter
+	auto plane = Plane3::Builder()
+		.WithNormal({ 0, 1, 0 })
+		.WithPoint({ 0, 0.25 * domain.Height(), 0 })
+		.MakeShared();
+
+	auto sphere = Sphere3::Builder()
+		.WithCenter(domain.MidPoint())
+		.WithRadius(0.15 * domain.Width())
+		.MakeShared();
+
+	auto surfaceSet = ImplicitSurfaceSet3::Builder()
+		.WithExplicitSurfaces({ plane, sphere })
+		.MakeShared();
+
+	auto emitter = VolumeGridEmitter3::Builder()
+		.WithSourceRegion(surfaceSet)
+		.MakeShared();
+
+	solver->SetEmitter(emitter);
+	emitter->AddSignedDistanceTarget(solver->GetSignedDistanceField());
+
+	// Print simulation info
+	printf("Running example 1 (water-drop)\n");
+	PrintInfo(solver);
+
+	// Run simulation
+	RunSimulation(rootDir, solver, numberOfFrames, fps);
+}
 bool NormalMapApp::Initialize()
 {
     if(!D3DApp::Initialize())
