@@ -2,50 +2,49 @@
 // NormalMapApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
 //***************************************************************************************
 #include "NormalMapApp.h"
-#include <../../../../Includes/Array/Array2.h>
-#include <../../../../Includes/Collider/RigidBodyCollider3.h>
-#include <../../../../Includes/Emitter/VolumeGridEmitter3.h>
-#include <../../../../Includes/Geometry/Box3.h>
-#include <../../../../Includes/Geometry/Cylinder3.h>
-#include <../../../../Includes/Geometry/Plane3.h>
-#include <../../../../Includes/Geometry/Sphere3.h>
-#include <../../../../Includes/Geometry/TriangleMesh3.h>
-#include <../../../../Includes/Grid/ScalarGrid3.h>
-#include <../../../../Includes/Grid/VertexCenteredScalarGrid3.h>
-#include <../../../../Includes/Math/MathUtils.h>
-#include <../../../../Includes/MarchingCubes/MarchingCubes.h>
-#include <../../../../Includes/Solver/LevelSet/LevelSetLiquidSolver3.h>
-#include <../../../../Includes/Surface/Implicit/ImplicitSurfaceSet3.h>
-#include <../../../../Includes/Surface/Implicit/CustomImplicitSurface3.h>
-#include <../../../../Includes/Utils/Logger.h>
-
-#include <../../../../Libraries/pystring/pystring/pystring.h>
-
-#ifdef CUBBYFLOW_WINDOWS
-#include <direct.h>
-#else
-#include <sys/stat.h>
-#include <direct.h>
-#endif
-
-#include <../../../../Libraries/winix/getopt.h>
-
-#include <fstream>
-#include <string>
-#include <vector>
-
-#define APP_NAME "LevelSetLiquidSim"
-
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
-using namespace CubbyFlow;
 
 const int gNumFrameResources = 3;
 
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
+
+struct RenderItem
+{
+	RenderItem() = default;
+	RenderItem(const RenderItem& rhs) = delete;
+
+	// World matrix of the shape that describes the object's local space
+	// relative to the world space, which defines the position, orientation,
+	// and scale of the object in the world.
+	XMFLOAT4X4 World = MathHelper::Identity4x4();
+
+	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
+
+	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
+	// Because we have an object cbuffer for each FrameResource, we have to apply the
+	// update to each FrameResource.  Thus, when we modify obect data we should set 
+	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
+	int NumFramesDirty = gNumFrameResources;
+
+	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
+	UINT ObjCBIndex = -1;
+
+	Material* Mat = nullptr;
+	MeshGeometry* Geo = nullptr;
+
+	// Primitive topology.
+	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+	// DrawIndexedInstanced parameters.
+	UINT IndexCount = 0;
+	UINT StartIndexLocation = 0;
+	int BaseVertexLocation = 0;
+};
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
     PSTR cmdLine, int showCmd)
@@ -82,80 +81,10 @@ NormalMapApp::~NormalMapApp()
         FlushCommandQueue();
 }
 
-void NormalMapApp::CubbyFlow_Initialize()
-{
-	size_t resX = 50;
-	unsigned int numberOfFrames = 100;
-	double fps = 60.0;
-	int exampleNum = 1;
-	std::string logFileName = APP_NAME ".log";
-	std::string outputDir = APP_NAME "_output";
-
-#ifdef CUBBYFLOW_WINDOWS
-	_mkdir(outputDir.c_str());
-#else
-	mkdir(outputDir.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
-#endif
-
-	std::ofstream logFile(logFileName.c_str());
-	if (logFile)
-	{
-		Logging::SetAllStream(&logFile);
-	}
-
-	RunExample1(outputDir, resX, numberOfFrames, fps);
-}
-
-void RunExample1(
-	const std::string& rootDir,
-	size_t resX,
-	unsigned int numberOfFrames,
-	double fps)
-{
-	// Build solver
-	auto solver = LevelSetLiquidSolver3::Builder()
-		.WithResolution({ resX, 2 * resX, resX })
-		.WithDomainSizeX(1.0)
-		.MakeShared();
-
-	auto grids = solver->GetGridSystemData();
-	BoundingBox3D domain = grids->GetBoundingBox();
-
-	// Build emitter
-	auto plane = Plane3::Builder()
-		.WithNormal({ 0, 1, 0 })
-		.WithPoint({ 0, 0.25 * domain.Height(), 0 })
-		.MakeShared();
-
-	auto sphere = Sphere3::Builder()
-		.WithCenter(domain.MidPoint())
-		.WithRadius(0.15 * domain.Width())
-		.MakeShared();
-
-	auto surfaceSet = ImplicitSurfaceSet3::Builder()
-		.WithExplicitSurfaces({ plane, sphere })
-		.MakeShared();
-
-	auto emitter = VolumeGridEmitter3::Builder()
-		.WithSourceRegion(surfaceSet)
-		.MakeShared();
-
-	solver->SetEmitter(emitter);
-	emitter->AddSignedDistanceTarget(solver->GetSignedDistanceField());
-
-	// Print simulation info
-	printf("Running example 1 (water-drop)\n");
-	PrintInfo(solver);
-
-	// Run simulation
-	RunSimulation(rootDir, solver, numberOfFrames, fps);
-}
 bool NormalMapApp::Initialize()
 {
     if(!D3DApp::Initialize())
         return false;
-
-	CubbyFlow_Initialize();
 
     // Reset the command list to prep for initialization commands.
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
