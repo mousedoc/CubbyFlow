@@ -23,7 +23,7 @@ namespace CubbyFlow
 	public:
 		//! Read-write array accessor type.
 		using ScalarDataAccessor = ArrayAccessor3<double>;
-
+		
 		//! Read-only array accessor type.
 		using ConstScalarDataAccessor = ConstArrayAccessor3<double>;
 
