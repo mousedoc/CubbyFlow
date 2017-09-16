@@ -10,12 +10,20 @@
 
 namespace CubbyFlow
 {
-	LevelSetLiquidSim(double timeIntervalInSeconds) : mtimeIntervalInSeconds(timeIntervalInSeconds)
+	struct Vertex
+	{
+		//XMFLOAT3 Pos;
+		//XMFLOAT4 Color;
+	};
+
+	저거 다 주석처리해도 에러 
+
+	LevelSetLiquidSim::LevelSetLiquidSim(double timeIntervalInSeconds) : mtimeIntervalInSeconds(timeIntervalInSeconds)
 	{
 		// Do nothing
 	}
 
-	bool Initialize()
+	bool LevelSetLiquidSim::Initialize()
 	{
 		if (!NormalMapApp::Initialize())
 		{
@@ -89,6 +97,7 @@ namespace CubbyFlow
 		printf("Running example 1 (water-drop)\n");
 
 		// Initialize Simulation and Upload to Constant Buffer
+		auto sdf = solver->getSignedDistanceField();
 		auto meshData = SaveTriangleMesh(sdf, 0);
 
 		auto vertices = meshData.vertices;
@@ -172,6 +181,66 @@ namespace CubbyFlow
 		mLiquidRitem->Geo->VertexBufferGPU = CurrSDF->Resource();
 	}
 
+	void Draw(const GameTimer& gt)
+	{
+		//// Reuse the memory associated with command recording.
+		//// We can only reset when the associated command lists have finished execution on the GPU.
+		//ThrowIfFailed(mDirectCmdListAlloc->Reset());
+
+		//// A command list can be reset after it has been added to the command queue via ExecuteCommandList.
+		//// Reusing the command list reuses memory.
+		//ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), mPSO.Get()));
+
+		//mCommandList->RSSetViewports(1, &mScreenViewport);
+		//mCommandList->RSSetScissorRects(1, &mScissorRect);
+
+		//// Indicate a state transition on the resource usage.
+		//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+		//	D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+		//// Clear the back buffer and depth buffer.
+		//mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
+		//mCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+
+		//// Specify the buffers we are going to render to.
+		//mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
+
+		//ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvHeap.Get() };
+		//mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
+		//mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
+
+		//mCommandList->IASetVertexBuffers(0, 1, &LiquidGeo->VertexBufferView());
+		//mCommandList->IASetIndexBuffer(&mLiquidGeo->IndexBufferView());
+		//mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		//mCommandList->SetGraphicsRootDescriptorTable(0, mCbvHeap->GetGPUDescriptorHandleForHeapStart());
+
+		//mCommandList->DrawIndexedInstanced(
+		//	mLiquidGeo->DrawArgs["liquidGeo"].IndexCount,
+		//	1, 0, 0, 0);
+
+		//// Indicate a state transition on the resource usage.
+		//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+		//	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
+		//// Done recording commands.
+		//ThrowIfFailed(mCommandList->Close());
+
+		//// Add the command list to the queue for execution.
+		//ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
+		//mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
+		//// swap the back and front buffers
+		//ThrowIfFailed(mSwapChain->Present(0, 0));
+		//mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+
+		//// Wait until frame commands are complete.  This waiting is inefficient and is
+		//// done for simplicity.  Later we will show how to organize our rendering code
+		//// so we do not have to wait per frame.
+		//FlushCommandQueue();
+	}
+
 	void BuildRenderItems()
 	{
 		auto liquidRitem = std::make_unique<RenderItem>();
@@ -179,7 +248,7 @@ namespace CubbyFlow
 		XMStoreFloat4x4(&liquidRitem->TexTransform, XMMatrixScaling(1.0f, 0.5f, 1.0f));
 		
 		liquidRitem->ObjCBIndex = 0;
-		liquidRitem->Geo = mGeometries["shapeGeo"].get();
+		liquidRitem->Geo = mGeometries["liquidGeo"].get();
 		liquidRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		liquidRitem->IndexCount = liquidRitem->Geo->DrawArgs["liquidGeo"].IndexCount;
 		liquidRitem->StartIndexLocation = liquidRitem->Geo->DrawArgs["liquidGeo"].StartIndexLocation;
@@ -189,4 +258,3 @@ namespace CubbyFlow
 		mAllRitems.push_back(std::move(liquidRitem));
 	}
 }
-
