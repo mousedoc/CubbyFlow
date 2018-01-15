@@ -7,11 +7,13 @@
 //--------------------------------------------------------------------------------------
 #pragma once
 
-#include <d3d11.h>
-#include <d3dx11.h>
-#include <d3dcompiler.h>
-#include <xnamath.h>
-#include "Resource.h"
+#define NOMINMAX
+
+#include <limits>
+#include <fstream>
+#include <string>
+#include <vector>
+
 #include <Array/Array2.h>
 #include <Collider/RigidBodyCollider3.h>
 #include <Emitter/VolumeGridEmitter3.h>
@@ -30,6 +32,12 @@
 
 #include <pystring/pystring.h>
 
+#include <d3d11.h>
+#include <d3dx11.h>
+#include <d3dcompiler.h>
+#include <xnamath.h>
+#include "Resource.h"
+
 #ifdef CUBBYFLOW_WINDOWS
 #include <direct.h>
 #else
@@ -37,10 +45,6 @@
 #endif
 
 #include <getopt.h>
-
-#include <fstream>
-#include <string>
-#include <vector>
 
 #define APP_NAME L"DirectX"
 
